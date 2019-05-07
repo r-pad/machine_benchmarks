@@ -14,7 +14,7 @@ to_tensor = torchvision.transforms.ToTensor()
 
 
 
-def bench_load(test_dir, gpu, times, dynamic_input=False,
+def bench_load(test_dir, times, dynamic_input=False,
                image_package = 'cv2'):
     import os
     import cv2
@@ -61,9 +61,8 @@ def bench_load(test_dir, gpu, times, dynamic_input=False,
     os.remove(filename_2)
 
 
-def bench_eval(model_type, gpu, times, batch_size = 32, dynamic_input=False):
+def bench_eval(model_type, times, batch_size = 32, dynamic_input=False):
     with torch.no_grad():
-        torch.cuda.set_device(gpu)
         torch.backends.cudnn.benchmark = not dynamic_input
 
         if(model_type == 'resnet18'):
@@ -120,8 +119,7 @@ def bench_eval(model_type, gpu, times, batch_size = 32, dynamic_input=False):
         print('Hz: %.2f [hz]' % (times / elapsed_time))
 
 
-def bench_train(model_type, gpu, times, batch_size = 32, dynamic_input=False):
-    torch.cuda.set_device(gpu)
+def bench_train(model_type, times, batch_size = 32, dynamic_input=False):
     torch.backends.cudnn.benchmark = not dynamic_input
 
     if(model_type == 'resnet18'):
@@ -193,7 +191,6 @@ def main():
     parser.add_argument('--model', type=str, default='resnet18')
     parser.add_argument('--test-dir', type=str, default='.')
     parser.add_argument('--image-package', type=str, default='cv2')
-    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--times', type=int, default=1000)
     parser.add_argument('--batch-size', type=int, default=1000)
     parser.add_argument('--dynamic-input', action='store_true')
@@ -203,11 +200,11 @@ def main():
     args = parser.parse_args()
 
     if(args.eval):
-        bench_eval(args.model, args.gpu, args.times, args.batch_size, args.dynamic_input)
+        bench_eval(args.model, args.times, args.batch_size, args.dynamic_input)
     if(args.train):
-        bench_train(args.model, args.gpu, args.times, args.batch_size, args.dynamic_input)
+        bench_train(args.model, args.times, args.batch_size, args.dynamic_input)
     if(args.load):
-        bench_load(args.test_dir, args.gpu, args.times, args.dynamic_input, image_package = args.image_package)
+        bench_load(args.test_dir, args.times, args.dynamic_input, image_package = args.image_package)
 
 
 if __name__ == '__main__':
