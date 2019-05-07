@@ -11,8 +11,9 @@ def f(x):
 
 if __name__ == '__main__':
     import argparse
-    parser.add_argument('--percent', type=float, default = 1.0, help='Percent cpu load')
+    
     parser = argparse.ArgumentParser()
+    parser.add_argument('--percent', type=float, default = 1.0, help='Percent cpu load')
     args = parser.parse_args()
 
     processes = int(args.percent*cpu_count())

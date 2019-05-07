@@ -12,6 +12,8 @@ from torch import nn, optim
 import torchvision
 to_tensor = torchvision.transforms.ToTensor()
 
+
+
 def bench_load(test_dir, gpu, times, dynamic_input=False,
                image_package = 'cv2'):
     import os
@@ -22,8 +24,8 @@ def bench_load(test_dir, gpu, times, dynamic_input=False,
     cv2.imwrite(filename_2, (255*np.random.random((224, 224, 3)).astype(np.uint8)))
     
     torch.cuda.synchronize()
-    t_start = time.time()
-    
+    elapsed_time = 0
+
     for i in six.moves.range(times):
         if dynamic_input:
             if i % 2 == 1:
@@ -32,7 +34,9 @@ def bench_load(test_dir, gpu, times, dynamic_input=False,
                 filename = filename_2
         else:
             filename = filename_1
+        cv2.imwrite(filename, (255*np.random.random((224, 224, 3)).astype(np.uint8)))
         
+        t_start = time.time()
         if(image_package == 'cv2'):
             img = cv2.imread(filename)
         elif(image_package == 'PIL'):
@@ -43,12 +47,12 @@ def bench_load(test_dir, gpu, times, dynamic_input=False,
             img = io.imread(filename)
         else:
             print('==> Invalid Image Package {}, [cv2, PIL, skimage]'.format(image_package))
-
         x = torch.autograd.Variable(to_tensor(img).float()).cuda()
-
+        elapsed_time += time.time() - t_start
     print('==> Testing Load {} from {}'.format(image_package, test_dir))
+    t_start = time.time()
     torch.cuda.synchronize()
-    elapsed_time = time.time() - t_start
+    elapsed_time += time.time() - t_start
 
     print('Elapsed time: %.2f [s / %d loads]' % (elapsed_time, times))
     print('Hz: %.2f [hz]' % (times / elapsed_time))
@@ -57,7 +61,7 @@ def bench_load(test_dir, gpu, times, dynamic_input=False,
     os.remove(filename_2)
 
 
-def bench_eval(model_type, gpu, times, dynamic_input=False):
+def bench_eval(model_type, gpu, times, batch_size = 32, dynamic_input=False):
     with torch.no_grad():
         torch.cuda.set_device(gpu)
         torch.backends.cudnn.benchmark = not dynamic_input
@@ -85,14 +89,15 @@ def bench_eval(model_type, gpu, times, dynamic_input=False):
         model = model.cuda()
 
         if dynamic_input:
-            x_data = np.random.random((1, 3, 224, 224))
+
+            x_data = np.random.random((batch_size, 3, 224, 224))
             x1 = torch.autograd.Variable(torch.from_numpy(x_data).float(),
                                          ).cuda()
-            x_data = np.random.random((1, 3, 224, 224))
+            x_data = np.random.random((batch_size, 3, 224, 224))
             x2 = torch.autograd.Variable(torch.from_numpy(x_data).float(),
                                          ).cuda()
         else:
-            x_data = np.random.random((1, 3, 224, 224))
+            x_data = np.random.random((batch_size, 3, 224, 224))
             x1 = torch.autograd.Variable(torch.from_numpy(x_data).float(),
                                          ).cuda()
 
@@ -115,7 +120,7 @@ def bench_eval(model_type, gpu, times, dynamic_input=False):
         print('Hz: %.2f [hz]' % (times / elapsed_time))
 
 
-def bench_train(model_type, gpu, times, dynamic_input=False):
+def bench_train(model_type, gpu, times, batch_size = 32, dynamic_input=False):
     torch.cuda.set_device(gpu)
     torch.backends.cudnn.benchmark = not dynamic_input
 
@@ -144,17 +149,17 @@ def bench_train(model_type, gpu, times, dynamic_input=False):
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 
     if dynamic_input:
-        x_data = np.random.random((1, 3, 224, 224))
+        x_data = np.random.random((batch_size, 3, 224, 224))
         x1 = torch.autograd.Variable(torch.from_numpy(x_data).float()).cuda()
-        x_data = np.random.random((1, 3, 224, 224))
+        x_data = np.random.random((batch_size, 3, 224, 224))
         x2 = torch.autograd.Variable(torch.from_numpy(x_data).float()).cuda()
-        y1 = torch.autograd.Variable(torch.FloatTensor(1).uniform_(0, 1000).long()).cuda()
-        y2 = torch.autograd.Variable(torch.FloatTensor(1).uniform_(0, 1000).long()).cuda()
+        y1 = torch.autograd.Variable(torch.FloatTensor(batch_size).uniform_(0, 1000).long()).cuda()
+        y2 = torch.autograd.Variable(torch.FloatTensor(batch_size).uniform_(0, 1000).long()).cuda()
 
     else:
-        x_data = np.random.random((1, 3, 224, 224))
+        x_data = np.random.random((batch_size, 3, 224, 224))
         x1 = torch.autograd.Variable(torch.from_numpy(x_data).float()).cuda()
-        y1 = torch.autograd.Variable(torch.FloatTensor(1).uniform_(0, 1000).long()).cuda()
+        y1 = torch.autograd.Variable(torch.FloatTensor(batch_size).uniform_(0, 1000).long()).cuda()
 
 
     for i in six.moves.range(5):
@@ -186,10 +191,11 @@ def bench_train(model_type, gpu, times, dynamic_input=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='resnet18')
-    parser.add_argument('--test_dir', type=str, default='.')
-    parser.add_argument('--image_package', type=str, default='cv2')
+    parser.add_argument('--test-dir', type=str, default='.')
+    parser.add_argument('--image-package', type=str, default='cv2')
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--times', type=int, default=1000)
+    parser.add_argument('--batch-size', type=int, default=1000)
     parser.add_argument('--dynamic-input', action='store_true')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--train', action='store_true')
@@ -197,9 +203,9 @@ def main():
     args = parser.parse_args()
 
     if(args.eval):
-        bench_eval(args.model, args.gpu, args.times, args.dynamic_input)
+        bench_eval(args.model, args.gpu, args.times, args.batch_size, args.dynamic_input)
     if(args.train):
-        bench_train(args.model, args.gpu, args.times, args.dynamic_input)
+        bench_train(args.model, args.gpu, args.times, args.batch_size, args.dynamic_input)
     if(args.load):
         bench_load(args.test_dir, args.gpu, args.times, args.dynamic_input, image_package = args.image_package)
 
