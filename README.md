@@ -2,6 +2,13 @@
 
 Basic self-contained torch benchmarking tool for forward, backward, and dataloading speeds. 
 
+## Requirements
+* numpy
+* six
+* torch
+* torchvision
+
+
 ## Basic Usage
 Change test-dir to test speeds of loading from different disks
 
