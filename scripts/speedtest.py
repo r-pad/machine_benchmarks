@@ -192,7 +192,7 @@ def main():
     parser.add_argument('--test-dir', type=str, default='.')
     parser.add_argument('--image-package', type=str, default='cv2')
     parser.add_argument('--times', type=int, default=1000)
-    parser.add_argument('--batch-size', type=int, default=1000)
+    parser.add_argument('--batch-size', type=int, default=32)
     parser.add_argument('--dynamic-input', action='store_true')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--train', action='store_true')
